@@ -1,7 +1,19 @@
 import {Login} from "./components/auth/login.js";
 import {SignUp} from "./components/auth/sign-up.js";
 import {Logout} from "./components/auth/logout.js";
+import {Main} from "./components/main.js";
+import config from "./config/config.js";
+import {HttpService} from "./services/http-service.js";
 import {AuthUtils} from "./utils/auth-utils.js";
+import {Revenue} from "./components/revenues/revenues.js";
+import {RevenueAdd} from "./components/revenues/revenue-add.js";
+import {RevenueEdit} from "./components/revenues/revenue-edit.js";
+import {Expenses} from "./components/expenses/expenses.js";
+import {ExpenseAdd} from "./components/expenses/expense-add.js";
+import {ExpenseEdit} from "./components/expenses/expense-edit.js";
+import {AllFinance} from "./components/all-finance/all-finance.js";
+import {AllFinanceEdit} from "./components/all-finance/all-finance-edit.js";
+import {AllFinanceAdd} from "./components/all-finance/all-finance-add.js";
 
 export class Router {
   constructor() {
@@ -38,8 +50,9 @@ export class Router {
         template: '/templates/main.html',
         layout: '/templates/layout.html',
         styles: ['/styles/main.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new Main();
+        }
       },
       {
         route: '#/revenues',
@@ -47,8 +60,9 @@ export class Router {
         template: '/templates/revenues/revenues.html',
         layout: '/templates/layout.html',
         styles: ['/styles/revenues/revenues.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new Revenue();
+        }
       },
       {
         route: '#/revenue-add',
@@ -56,8 +70,9 @@ export class Router {
         template: '/templates/revenues/revenues-add.html',
         layout: '/templates/layout.html',
         styles: ['/styles/revenues/revenues-add.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new RevenueAdd();
+        }
       },
       {
         route: '#/revenue-edit',
@@ -65,8 +80,9 @@ export class Router {
         template: '/templates/revenues/revenues-edit.html',
         layout: '/templates/layout.html',
         styles: ['/styles/revenues/revenues-edit.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new RevenueEdit();
+        }
       },
       {
         route: '#/expenses',
@@ -74,8 +90,9 @@ export class Router {
         template: '/templates/expenses/expenses.html',
         layout: '/templates/layout.html',
         styles: ['/styles/expenses/expenses.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new Expenses();
+        }
       },
       {
         route: '#/expense-add',
@@ -83,8 +100,9 @@ export class Router {
         template: '/templates/expenses/expenses-add.html',
         layout: '/templates/layout.html',
         styles: ['/styles/expenses/expenses-add.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new ExpenseAdd();
+        }
       },
       {
         route: '#/expense-edit',
@@ -92,8 +110,9 @@ export class Router {
         template: '/templates/expenses/expenses-edit.html',
         layout: '/templates/layout.html',
         styles: ['/styles/expenses/expenses-edit.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new ExpenseEdit();
+        }
       },
       {
         route: '#/all-finance',
@@ -101,8 +120,9 @@ export class Router {
         template: '/templates/all-finance/all-finance.html',
         layout: '/templates/layout.html',
         styles: ['/styles/all-finance/all-finance.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new AllFinance();
+        }
       },
       {
         route: '#/all-finance-add',
@@ -110,8 +130,9 @@ export class Router {
         template: '/templates/all-finance/all-finance-add.html',
         layout: '/templates/layout.html',
         styles: ['/styles/all-finance/all-finance-add.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new AllFinanceAdd();
+        }
       },
       {
         route: '#/all-finance-edit',
@@ -119,8 +140,9 @@ export class Router {
         template: '/templates/all-finance/all-finance-edit.html',
         layout: '/templates/layout.html',
         styles: ['/styles/all-finance/all-finance-edit.css'],
-        // load: () => {
-        // }
+        load: () => {
+          new AllFinanceEdit();
+        }
       },
     ];
 
@@ -156,15 +178,20 @@ export class Router {
       }
       content.innerHTML = await fetch(newRoute.template).then(response => response.text());
 
-      //Подгружаем имя
+      //Активация пунктов меню
+      this.activateMenuItem(newRoute);
+      //Подгружаем имя и баланс
+      this.showBalance().then();
       this.showUserName().then();
+      //Выход из системы
       this.logout();
-
     }
+
     //Подключение стилей
     if (newRoute.styles) {
       this.linkStyles(newRoute.styles);
     }
+
     //Отображение заголовка страницы
     const titleElement = document.getElementById('titlePage');
     if (titleElement) {
@@ -175,6 +202,7 @@ export class Router {
       newRoute.load();
     }
   }
+
   //Отображение пользователя
   async showUserName() {
     this.userNameElement = document.querySelectorAll(".user-name");
@@ -202,6 +230,43 @@ export class Router {
       });
     });
   }
+
+  //Отображение баланса
+  async showBalance() {
+    this.balanceShowElement = document.querySelectorAll(".balance-number");
+    try {
+      const result = await HttpService.request(config.host + '/balance');
+      if (result && typeof result.balance === 'number') {
+        this.balanceShowElement.forEach(el => {el.innerText = result.balance});
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (e) {
+      console.error("Ошибка при получении баланса: ", e);
+    }
+  }
+
+  //Активация пунктов меню
+  activateMenuItem(route) {
+    const details = document.querySelectorAll("details");
+    //Массив с роутами для категорий
+    const openDetailsRoutes = ['#/revenues', '#/expenses'];
+
+    document.querySelectorAll('.layout .link-sidebar').forEach(item => {
+      let href = item.getAttribute('href');
+
+      if ((route.route.includes(href) && href !== '#/login' && href !== '#/signup')) {
+        item.classList.add('active-link');
+
+        if (openDetailsRoutes.includes(href)) {
+          details.forEach(details => details.setAttribute('open', 'open'));
+        }
+      } else {
+        item.classList.remove('active-link');
+      }
+    });
+  }
+
   //Подключение стилей
   linkStyles(styles) {
     const headElement = document.querySelector('head');
@@ -213,6 +278,7 @@ export class Router {
       this.currentStyles.push(link);
     });
   }
+
   //Удаление стилей
   removeCurrentStyles() {
     this.currentStyles.forEach(styleElement => {
